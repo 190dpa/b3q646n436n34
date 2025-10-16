@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para os usuários verificados
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String
+  coins        Int       @default(0)
+  health       Int       @default(100)
+  isAdmin      Boolean   @default(false)
+  isBanned     Boolean   @default(false)
+  banReason    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  characters   Character[]
+  tickets      Ticket[]
+  appeal       BanAppeal?
+}
+
+// Modelo para os personagens que um usuário possui
+model Character {
+  id              String   @id @default(cuid())
+  name            String
+  ability         String
+  rarityName      String
+  rarityColor     String
+  buffDescription String
+  owner           User     @relation(fields: [ownerId], references: [id])
+  ownerId         String
+}
+
+// Modelo para os tickets de suporte
+model Ticket {
+  id        Int      @id @default(autoincrement())
+  subject   String
+  message   String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  messages  TicketMessage[]
+}
+
+// Modelo para usuários pendentes de verificação
+model PendingUser {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  username         String
+  passwordHash     String
+  verificationCode String
+  createdAt        DateTime @default(now())
+}
+
+// Modelo para tokens de redefinição de senha
+model PasswordReset {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expires   DateTime
+  createdAt DateTime @default(now())
+}
+
+// Modelo para o log de ações do administrador
+model AdminLog {
+  id        Int      @id @default(autoincrement())
+  action    String // Ex: "BAN_USER", "GIVE_COINS"
+  details   String // Ex: "Baniu o usuário test@example.com por spam."
+  adminName String
+  createdAt DateTime @default(now())
+}
+
+// Modelo para as mensagens dentro de um ticket
+model TicketMessage {
+  id        Int      @id @default(autoincrement())
+  content   String
+  isAdmin   Boolean  @default(false)
+  authorName String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId  Int
+}
+
+// Modelo para apelos de banimento
+model BanAppeal {
+  id        Int      @id @default(autoincrement())
+  content   String
+  status    String   @default("pending") // pending, approved, rejected
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @unique // Um usuário só pode ter um apelo por vez
+}
+
+// Modelo para links de presente
+model GiftLink {
+  id              String    @id @default(cuid())
+  token           String    @unique
+  giftType        String // "COINS" or "CHARACTER"
+  giftValue       String // Quantidade de moedas ou nome do personagem
+  giftMeta        String?   // Informações extras, como a raridade do personagem
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  claimed         Boolean   @default(false)
+  claimedByUserId String?
+}
